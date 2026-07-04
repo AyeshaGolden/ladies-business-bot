@@ -32,7 +32,7 @@ if not st.session_state.registered:
     whatsapp_num = st.text_input("WhatsApp Number (e.g., 923144257762):", value=st.session_state.phone)
     baji_name = st.text_input("Aap Ka Naam (Naye Users Ke Liye):", value=st.session_state.baji_name)
     
-    if st.button("Aagay Barhein ➔", type="primary"):
+    if st.button("Aagay Barhein ➔", type="primary", key="submit_registration_btn"):
         if whatsapp_num:
             whatsapp_num = whatsapp_num.strip()
             baji_name = baji_name.strip()
@@ -43,7 +43,7 @@ if not st.session_state.registered:
             if check_res.status_code == 200 and len(check_res.json()) > 0:
                 # 🔥 CASE A: Number pehle se hai (Page band ho gaya tha)
                 user_data = check_res.json()[0]
-                st.session_state.baji_name = user_data['baji_name'] # Purana naam database se utha lo
+                st.session_state.baji_name = user_data['baji_name'] 
                 st.session_state.phone = whatsapp_num
                 st.session_state.registered = True
                 st.toast(f"👋 Khushamdeed wapas! Aap ka account pehle se register hai.")
@@ -72,17 +72,18 @@ if not st.session_state.registered:
 else:
     st.info(f"👋 Khushamdeed **{st.session_state.baji_name}** ({st.session_state.phone})")
     
-    # Action Buttons
+    # Action Buttons (Fixed layout & types to prevent StreamlitAPIException)
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("🔄 Dobara Code Mangwayein (Resend)", type="secondary", key="resend_btn"):
+        if st.button("🔄 Dobara Code Mangwayein", type="secondary", key="resend_code_action_btn"):
             requests.patch(f"{SUPABASE_URL}/rest/v1/ladies_bot_registration?whatsapp_num=eq.{st.session_state.phone}", json={"pairing_code": "RESEND_REQUESTED"}, headers=headers)
             st.toast("⏳ Naye code ki request bhej di gayi hai...")
             time.sleep(1)
             st.rerun()
             
     with col2:
-        if st.button("❌ Account Se Exit / Number Tabdeel", type="danger", key="change_num_btn"):
+        # 'danger' type hata kar simple text button lagaya hai jo har Streamlit version par smoothly chalta hai
+        if st.button("❌ Account Se Exit Karein", type="secondary", key="exit_account_action_btn"):
             st.session_state.registered = False
             st.session_state.phone = ""
             st.session_state.baji_name = ""
@@ -129,4 +130,4 @@ else:
         elif current_code == "FAILED_TRY_AGAIN":
             status_placeholder.empty()
             st.error("❌ WhatsApp Server is waqt code nahi de pa raha.")
-            st.warning("👉 Pareshan na hon! Upar diye gaye **'Dobara Code Mangwayein (Resend)'** button par click karein.")
+            st.warning("👉 Pareshan na hon! Upar diye gaye **'Dobara Code Mangwayein'** button par click karein.")

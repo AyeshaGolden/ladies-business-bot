@@ -1,8 +1,9 @@
 import streamlit as st
 import time
 import requests
+from streamlit_autorefresh import st_autorefresh
 
-# Page UI configurations
+# Page configurations
 st.set_page_config(page_title="Ladies Business Bot", page_icon="🧕", layout="centered")
 
 # --- CONFIGURATION ---
@@ -15,10 +16,9 @@ headers = {
 }
 
 st.title("🧕 Ladies Business Bot")
-st.write("Welcome! Apna account register/connect karein aur 1 minute mein apna bot live karein.")
+st.write("Welcome! Apna account open karein aur website se Code le kar WhatsApp bot activate karein.")
 st.write("---")
 
-# Session State Initialization
 if 'registered' not in st.session_state:
     st.session_state.registered = False
 if 'phone' not in st.session_state:
@@ -31,17 +31,16 @@ if 'baji_name' not in st.session_state:
 # ==========================================
 if not st.session_state.registered:
     st.subheader("🔒 Register Karein Ya Apna Account Open Karein")
-    st.caption("ℹ️ Agar aap ka page band ho gaya tha, toh dubara wahi number likhein, website aap ko seedha aap ke code par le jayegi.")
+    st.caption("ℹ️ Agar aap ka page pehle band ho gaya tha, toh dubara wahi number likhein, website aapko seedha aap ke live code par le jayegi.")
     
-    whatsapp_num = st.text_input("WhatsApp Number (e.g., 923144257762):", value=st.session_state.phone)
-    baji_name = st.text_input("Aap Ka Naam (Naye Users Ke Liye):", value=st.session_state.baji_name)
+    whatsapp_num = st.text_input("WhatsApp Number (e.g., 03144357762):", value=st.session_state.phone)
+    baji_name = st.text_input("Aap Ka Naam:", value=st.session_state.baji_name)
     
     if st.button("Aagay Barhein ➔", type="primary", key="submit_registration_btn"):
         if whatsapp_num:
             whatsapp_num = whatsapp_num.strip()
             baji_name = baji_name.strip()
             
-            # Check if user already exists
             check_res = requests.get(f"{SUPABASE_URL}/rest/v1/ladies_bot_registration?whatsapp_num=eq.{whatsapp_num}", headers=headers)
             
             if check_res.status_code == 200 and len(check_res.json()) > 0:
@@ -49,7 +48,7 @@ if not st.session_state.registered:
                 st.session_state.baji_name = user_data['baji_name'] 
                 st.session_state.phone = whatsapp_num
                 st.session_state.registered = True
-                st.toast(f"👋 Khushamdeed wapas! Aap ka account pehle se register hai.")
+                st.toast(f"👋 Khushamdeed wapas!")
                 time.sleep(0.5)
                 st.rerun()
             else:
@@ -74,10 +73,9 @@ if not st.session_state.registered:
 else:
     st.info(f"👋 Khushamdeed **{st.session_state.baji_name}** ({st.session_state.phone})")
     
-    # Action Navigation Buttons
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("🔄 Dobara Code Mangwayein", type="secondary", key="resend_code_action_btn"):
+        if st.button("🔄 Naya Code Mangwayein", type="secondary", key="resend_code_action_btn"):
             requests.patch(f"{SUPABASE_URL}/rest/v1/ladies_bot_registration?whatsapp_num=eq.{st.session_state.phone}", json={"pairing_code": "RESEND_REQUESTED"}, headers=headers)
             st.toast("⏳ Naye code ki request bhej di gayi hai...")
             time.sleep(0.5)
@@ -95,21 +93,21 @@ else:
     code_placeholder = st.empty()
     status_placeholder = st.empty()
     
-    # Real-time data sync safely structured
+    # Live fetch from Supabase
     res = requests.get(f"{SUPABASE_URL}/rest/v1/ladies_bot_registration?whatsapp_num=eq.{st.session_state.phone}&select=pairing_code", headers=headers)
     
     if res.status_code == 200 and res.json():
         current_code = res.json()[0]['pairing_code']
         
         if current_code in ["WAITING", "RESEND_REQUESTED"]:
-            status_placeholder.warning("🔄 WhatsApp Server se pairing code mangwaya ja raha hai... Please wait (10-15s)")
-            time.sleep(3)
-            st.rerun()
+            status_placeholder.warning("🔄 Supabase server ke zariye code ready ho raha hai... Please wait (10-15 seconds)")
+            # Auto refresh page every 4 seconds to fetch newly generated code seamlessly
+            st_autorefresh(interval=4000, limit=20, key="frontend_reload_loop")
             
         elif current_code == "FAILED_TRY_AGAIN":
             status_placeholder.empty()
-            st.error("❌ WhatsApp Server is waqt code nahi de pa raha.")
-            st.warning("👉 Upar diye gaye **'Dobara Code Mangwayein'** button par click karein.")
+            st.error("❌ WhatsApp Server se connection build nahi ho saka.")
+            st.warning("👉 Koshish karein ke number correct format mein ho, aur upar diye gaye **'Naya Code Mangwayein'** button par click karein.")
             
         else:
             status_placeholder.empty()
@@ -120,12 +118,12 @@ else:
                 
                 code_placeholder.markdown(f"""
                 <div style="text-align:center; padding:20px; border: 2px dashed #90caf9; border-radius:15px; background:#fafafa; margin:15px 0;">
-                    <span style='font-size:15px; color:#555; display:block; font-weight:bold; margin-bottom:12px;'>AAPKA WHATSAPP LINK CODE:</span>
+                    <span style='font-size:15px; color:#555; display:block; font-weight:bold; margin-bottom:12px;'>APNE WHATSAPP LINK DEVICES MEIN YEH CODE DARJ KAREIN:</span>
                     <div style='display:flex; justify-content:center; flex-wrap:wrap;'>
                         {boxes_html}
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                st.success("💡 Yeh code apne WhatsApp -> Linked Devices -> Link with phone number mein darj karein!")
+                st.success("💡 **Kaam Kaise Karega?** \n1. Apne mobile par WhatsApp open karein.\n2. **Linked Devices** par jayein -> **Link with phone number** par click karein.\n3. Screen par dikhne wala yeh 8-digit code wahan type kar dein!")
             else:
-                st.info(f"Aap ka code yeh hai: **{current_code}**")
+                st.info(f"Aap ka pairing code yeh hai: **{current_code}**")

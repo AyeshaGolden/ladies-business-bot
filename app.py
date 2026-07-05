@@ -2,19 +2,23 @@ import streamlit as st
 import time
 import requests
 
-# Page configuration
+# Page UI configurations
 st.set_page_config(page_title="Ladies Business Bot", page_icon="🧕", layout="centered")
 
-# --- AAPKI SUPABASE DETAILS ---
+# --- CONFIGURATION ---
 SUPABASE_URL = "https://mymvzzflaghrnwfgfrmr.supabase.co"
 SUPABASE_KEY = "sb_publishable_rQC7U6k12fPKo19KoT8jMw_GikOcEm7" 
-headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
+headers = {
+    "apikey": SUPABASE_KEY, 
+    "Authorization": f"Bearer {SUPABASE_KEY}", 
+    "Content-Type": "application/json"
+}
 
 st.title("🧕 Ladies Business Bot")
 st.write("Welcome! Apna account register/connect karein aur 1 minute mein apna bot live karein.")
 st.write("---")
 
-# Session State Initialize karna
+# Session State Initialization
 if 'registered' not in st.session_state:
     st.session_state.registered = False
 if 'phone' not in st.session_state:
@@ -37,20 +41,18 @@ if not st.session_state.registered:
             whatsapp_num = whatsapp_num.strip()
             baji_name = baji_name.strip()
             
-            # DATABASE CHECK: Kya yeh number pehle se maujood hai?
+            # Check if user already exists
             check_res = requests.get(f"{SUPABASE_URL}/rest/v1/ladies_bot_registration?whatsapp_num=eq.{whatsapp_num}", headers=headers)
             
             if check_res.status_code == 200 and len(check_res.json()) > 0:
-                # 🔥 CASE A: Number pehle se hai (Page band ho gaya tha)
                 user_data = check_res.json()[0]
                 st.session_state.baji_name = user_data['baji_name'] 
                 st.session_state.phone = whatsapp_num
                 st.session_state.registered = True
                 st.toast(f"👋 Khushamdeed wapas! Aap ka account pehle se register hai.")
-                time.sleep(1)
+                time.sleep(0.5)
                 st.rerun()
             else:
-                # 🆕 CASE B: Bilkul naya user hai
                 if baji_name:
                     data = {"baji_name": baji_name, "whatsapp_num": whatsapp_num, "pairing_code": "WAITING"}
                     requests.post(f"{SUPABASE_URL}/rest/v1/ladies_bot_registration", json=data, headers=headers)
@@ -59,7 +61,7 @@ if not st.session_state.registered:
                     st.session_state.phone = whatsapp_num
                     st.session_state.baji_name = baji_name
                     st.toast("🎉 Account register ho raha hai...")
-                    time.sleep(1)
+                    time.sleep(0.5)
                     st.rerun()
                 else:
                     st.error("Naye account ke liye 'Aap Ka Naam' likhna zaroori hai!")
@@ -72,17 +74,16 @@ if not st.session_state.registered:
 else:
     st.info(f"👋 Khushamdeed **{st.session_state.baji_name}** ({st.session_state.phone})")
     
-    # Action Buttons (Fixed layout & types to prevent StreamlitAPIException)
+    # Action Navigation Buttons
     col1, col2 = st.columns(2)
     with col1:
         if st.button("🔄 Dobara Code Mangwayein", type="secondary", key="resend_code_action_btn"):
             requests.patch(f"{SUPABASE_URL}/rest/v1/ladies_bot_registration?whatsapp_num=eq.{st.session_state.phone}", json={"pairing_code": "RESEND_REQUESTED"}, headers=headers)
             st.toast("⏳ Naye code ki request bhej di gayi hai...")
-            time.sleep(1)
+            time.sleep(0.5)
             st.rerun()
             
     with col2:
-        # 'danger' type hata kar simple text button lagaya hai jo har Streamlit version par smoothly chalta hai
         if st.button("❌ Account Se Exit Karein", type="secondary", key="exit_account_action_btn"):
             st.session_state.registered = False
             st.session_state.phone = ""
@@ -94,40 +95,37 @@ else:
     code_placeholder = st.empty()
     status_placeholder = st.empty()
     
-    # Supabase se code live track karna
+    # Real-time data sync safely structured
     res = requests.get(f"{SUPABASE_URL}/rest/v1/ladies_bot_registration?whatsapp_num=eq.{st.session_state.phone}&select=pairing_code", headers=headers)
     
     if res.status_code == 200 and res.json():
         current_code = res.json()[0]['pairing_code']
         
-        # 1. Agar code abhi generate ho raha hai
         if current_code in ["WAITING", "RESEND_REQUESTED"]:
-            status_placeholder.warning("🔄 WhatsApp Server se pairing code mangwaya ja raha hai... (Max 15s)...")
-            time.sleep(2)
+            status_placeholder.warning("🔄 WhatsApp Server se pairing code mangwaya ja raha hai... Please wait (10-15s)")
+            time.sleep(3)
             st.rerun()
             
-        # 2. Agar code mil gaya (8-Boxes View)
-        elif current_code not in ["FAILED_TRY_AGAIN"]:
+        elif current_code == "FAILED_TRY_AGAIN":
+            status_placeholder.empty()
+            st.error("❌ WhatsApp Server is waqt code nahi de pa raha.")
+            st.warning("👉 Upar diye gaye **'Dobara Code Mangwayein'** button par click karein.")
+            
+        else:
             status_placeholder.empty()
             clean_code = current_code.replace("-", "").strip()
             
             if len(clean_code) == 8:
-                boxes_html = "".join([f"<div style='display:inline-block; width:45px; height:50px; line-height:50px; font-size:26px; font-weight:bold; color:#0288d1; background:#e1f5fe; border:2px solid #0288d1; border-radius:8px; margin:5px; text-align:center;'>{char}</div>" for char in clean_code])
+                boxes_html = "".join([f"<div style='display:inline-block; width:42px; height:48px; line-height:48px; font-size:24px; font-weight:bold; color:#0288d1; background:#e1f5fe; border:2px solid #0288d1; border-radius:8px; margin:4px; text-align:center;'>{char}</div>" for char in clean_code])
                 
                 code_placeholder.markdown(f"""
                 <div style="text-align:center; padding:20px; border: 2px dashed #90caf9; border-radius:15px; background:#fafafa; margin:15px 0;">
-                    <span style='font-size:16px; color:#555; display:block; font-weight:bold; margin-bottom:15px;'>AAPKA WHATSAPP LINK CODE:</span>
+                    <span style='font-size:15px; color:#555; display:block; font-weight:bold; margin-bottom:12px;'>AAPKA WHATSAPP LINK CODE:</span>
                     <div style='display:flex; justify-content:center; flex-wrap:wrap;'>
                         {boxes_html}
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                st.success("💡 Yeh code apne WhatsApp -> Linked Devices -> Link with phone number mein daalein!")
+                st.success("💡 Yeh code apne WhatsApp -> Linked Devices -> Link with phone number mein darj karein!")
             else:
                 st.info(f"Aap ka code yeh hai: **{current_code}**")
-                
-        # 3. Agar fail ho jaye
-        elif current_code == "FAILED_TRY_AGAIN":
-            status_placeholder.empty()
-            st.error("❌ WhatsApp Server is waqt code nahi de pa raha.")
-            st.warning("👉 Pareshan na hon! Upar diye gaye **'Dobara Code Mangwayein'** button par click karein.")

@@ -92,4 +92,4 @@ try:
     else:
         st.info("No users registered yet")
 except Exception as e:
-    st.error(f"Unable to fetch users: {str(e)}")
+    st.error(f"Unable to fetch users: {st
